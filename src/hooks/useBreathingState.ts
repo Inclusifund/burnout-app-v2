@@ -13,11 +13,13 @@ export default function useBreathingState() {
   const [cyclesCompleted, setCyclesCompleted] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number>(0);
+  const lastCycleCountRef = useRef<number>(0); // Track last counted cycle to prevent duplicates
 
   const start = () => {
     setState('breathing');
     setPhase('inhale');
     startTimeRef.current = Date.now();
+    lastCycleCountRef.current = 0; // Reset cycle tracking
   };
 
   const pause = () => {
@@ -42,6 +44,7 @@ export default function useBreathingState() {
     setState('idle');
     setPhase('inhale');
     setCyclesCompleted(0);
+    lastCycleCountRef.current = 0; // Reset cycle tracking
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
@@ -66,9 +69,14 @@ export default function useBreathingState() {
         setPhase('exhale');
       }
 
-      // Complete cycle check
-      if (elapsed > 0 && elapsed % cycleDuration < 100) {
-        setCyclesCompleted((prev) => prev + 1);
+      // Complete cycle check - use floor division to count completed cycles
+      // This prevents multiple increments within the same cycle
+      const currentCycleCount = Math.floor(elapsed / cycleDuration);
+      
+      // Only increment if we've entered a new cycle
+      if (currentCycleCount > lastCycleCountRef.current) {
+        lastCycleCountRef.current = currentCycleCount;
+        setCyclesCompleted(currentCycleCount);
       }
     }, 100); // Check every 100ms
 
